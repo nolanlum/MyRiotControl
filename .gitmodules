@@ -1,0 +1,12 @@
+[submodule "FluorineFXMods"]
+	path = FluorineFXMods
+	url = https://github.com/epicvrvs/FluorineFXMods.git
+[submodule "Blighttp"]
+	path = Blighttp
+	url = https://github.com/epicvrvs/Blighttp.git
+[submodule "NilSharp"]
+	path = NilSharp
+	url = https://github.com/epicvrvs/NilSharp.git
+[submodule "LibOfLegends"]
+	path = LibOfLegends
+	url = https://github.com/epicvrvs/LibOfLegends
