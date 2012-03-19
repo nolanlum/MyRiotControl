@@ -9,4 +9,4 @@
 	url = https://github.com/epicvrvs/NilSharp.git
 [submodule "LibOfLegends"]
 	path = LibOfLegends
-	url = https://github.com/epicvrvs/LibOfLegends
+	url = git@github.com:nol888/LibOfLegends.git
