@@ -35,25 +35,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Blighttp, Version=0.2.4454.474, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\References\Blighttp.dll</HintPath>
-    </Reference>
-    <Reference Include="FluorineFx, Version=1.0.0.17, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\References\FluorineFx.dll</HintPath>
-    </Reference>
-    <Reference Include="LibOfLegends, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\References\LibOfLegends.dll</HintPath>
-    </Reference>
     <Reference Include="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\References\Mono.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="Nil, Version=0.2.4454.215, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\References\Nil.dll</HintPath>
     </Reference>
     <Reference Include="Npgsql, Version=2.0.11.92, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -121,7 +105,24 @@
   <ItemGroup>
     <None Include="app.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Blighttp\Blighttp\Blighttp.csproj">
+      <Project>{42B53038-D8CE-4A10-8E3F-BBDD6E1434E2}</Project>
+      <Name>Blighttp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FluorineFXMods\Source\FluorineFx\FluorineFx-4.0.csproj">
+      <Project>{A9B8375B-579D-4F8A-B00C-F2828DB58F3A}</Project>
+      <Name>FluorineFx-4.0</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LibOfLegends\LibOfLegends\LibOfLegends.csproj">
+      <Project>{2B142E37-E05C-460E-8F22-306F5D01B567}</Project>
+      <Name>LibOfLegends</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\NilSharp\Nil\Nil.csproj">
+      <Project>{1334470A-3E7B-4A4F-A86A-7D6E908B89A7}</Project>
+      <Name>Nil</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
