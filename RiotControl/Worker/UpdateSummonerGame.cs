@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-
-using Npgsql;
-using NpgsqlTypes;
-
-using LibOfLegends;
+using System.Data.Common;
 
 using com.riotgames.platform.statistics;
+
+using LibOfLegends;
 
 namespace RiotControl
 {
@@ -31,7 +29,7 @@ namespace RiotControl
 			bool isBlueTeam = game.teamId == blueId;
 
 			//The update requires a transaction as multiple accounts might be querying data for the same game simultaneously
-			NpgsqlTransaction transaction = Database.BeginTransaction();
+			DbTransaction transaction = Database.BeginTransaction();
 			int gameId;
 			int summonerTeamId;
 			GameResult gameResult = new GameResult(game);
@@ -80,11 +78,11 @@ namespace RiotControl
 					//The game is not in the database yet
 					//Need to create the team entries first
 					SQLCommand newTeam = Command("insert into team (is_blue_team) values (:is_blue_team)");
-					newTeam.Set("is_blue_team", NpgsqlDbType.Boolean, isBlueTeam);
+					newTeam.Set("is_blue_team", isBlueTeam);
 					newTeam.Execute();
 					int team1Id = GetInsertId("team");
 					summonerTeamId = team1Id;
-					newTeam.Set("is_blue_team", NpgsqlDbType.Boolean, !isBlueTeam);
+					newTeam.Set("is_blue_team", !isBlueTeam);
 					newTeam.Execute();
 					int team2Id = GetInsertId("team");
 					Dictionary<int, int> teamIdDictionary = new Dictionary<int, int>()

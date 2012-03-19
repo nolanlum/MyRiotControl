@@ -1,15 +1,15 @@
 ﻿using System;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
 	class Reader
 	{
 		int Index;
-		NpgsqlDataReader DataReader;
+		DbDataReader DataReader;
 
-		public Reader(NpgsqlDataReader reader)
+		public Reader(DbDataReader reader)
 		{
 			Index = 0;
 			DataReader = reader;

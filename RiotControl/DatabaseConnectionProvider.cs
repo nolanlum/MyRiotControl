@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 
 using Npgsql;
+using System.Data.Common;
+using MySql.Data.MySqlClient;
 
 namespace RiotControl
 {
@@ -16,11 +18,46 @@ namespace RiotControl
 			ProviderConfiguration = configuration;
 		}
 
-		public NpgsqlConnection GetConnection()
+		public DbConnection GetConnection()
 		{
-			NpgsqlConnection connection = new NpgsqlConnection("Server = " + ProviderConfiguration.Host + "; Port = " + ProviderConfiguration.Port + "; User Id = " + ProviderConfiguration.Username + "; Database = " + ProviderConfiguration.Database + "; Preload Reader = true; Pooling = true; Minpoolsize = " + ProviderConfiguration.MinimumPoolSize + "; Maxpoolsize = " + ProviderConfiguration.MaximumPoolSize + ";");
+			DbConnection connection;
+
+			DbConnectionStringBuilder sb = new DbConnectionStringBuilder();
+			sb.Add("Server", ProviderConfiguration.Host);
+			sb.Add("Port", ProviderConfiguration.Port);
+			sb.Add("User Id", ProviderConfiguration.Username);
+			sb.Add("Database", ProviderConfiguration.Database);
+			sb.Add("Pooling", true);
+			sb.Add("Min Pool Size", ProviderConfiguration.MinimumPoolSize);
+			sb.Add("Max Pool Size", ProviderConfiguration.MaximumPoolSize);
+
+			switch (ProviderConfiguration.Provider.ToLower())
+			{
+				case "mysql":
+					connection = new MySqlConnection(sb.ToString());
+
+					break;
+				case "postgre":
+				default:
+					// To ensure compatibility, an unspecified provider is considered "postgre".
+					sb.Add("Preload reader", true);
+					connection = new NpgsqlConnection(sb.ToString());
+
+					break;
+			}
+
 			connection.Open();
 			return connection;
+		}
+
+		public static DbCommand GetCommand(string query, DbConnection connection)
+		{
+			MySqlConnection mysqlConn = connection as MySqlConnection;
+			if(mysqlConn != null)
+				return new MySqlCommand(query, mysqlConn);
+
+			// To ensure compatibility, an unspecified provider is considered "postgre".
+			return new NpgsqlCommand(query, connection as NpgsqlConnection);
 		}
 	}
 }

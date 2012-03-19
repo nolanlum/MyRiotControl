@@ -2,6 +2,7 @@
 {
 	public class DatabaseConfiguration
 	{
+		public string Provider;
 		public string Host;
 		public int Port;
 		public string Username;

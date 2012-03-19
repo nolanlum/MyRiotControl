@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
@@ -41,7 +38,7 @@ namespace RiotControl
 			"minion_kills",
 		};
 
-		public AggregatedChampionStatistics(NpgsqlDataReader dataReader)
+		public AggregatedChampionStatistics(DbDataReader dataReader)
 		{
 			Reader reader = new Reader(dataReader);
 

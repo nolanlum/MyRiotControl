@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
-
+using MySql.Data.MySqlClient;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -9,16 +10,24 @@ namespace RiotControl
 	class SQLCommand
 	{
 		public string Query;
-		public NpgsqlCommand Command;
+		public DbCommand Command;
 
 		List<string>.Enumerator Enumerator;
 		Profiler CommandProfiler;
 
-		public SQLCommand(string query, NpgsqlConnection connection, Profiler profiler = null, params object[] arguments)
+		SqlTypes SqlType;
+
+		public SQLCommand(string query, DbConnection connection, Profiler profiler = null, params object[] arguments)
 		{
 			CommandProfiler = profiler;
 			Query = string.Format(query, arguments);
-			Command = new NpgsqlCommand(Query, connection);
+			Command = DatabaseConnectionProvider.GetCommand(Query, connection);
+
+			// All logic assumes MySQL is the "edge case", and the fallback is postgre.
+			if (connection is MySqlConnection)
+				SqlType = new SqlTypes(MySqlDbType.Int32, MySqlDbType.Text, MySqlDbType.Double, MySqlDbType.Bit, MySqlDbType.VarChar);
+			else
+				SqlType = new SqlTypes(NpgsqlDbType.Integer, NpgsqlDbType.Text, NpgsqlDbType.Double, NpgsqlDbType.Boolean, NpgsqlDbType.Varchar);
 		}
 
 		public void SetFieldNames(List<string> fields)
@@ -26,42 +35,80 @@ namespace RiotControl
 			Enumerator = fields.GetEnumerator();
 		}
 
-		public void Add(string name, NpgsqlDbType type)
+		void Add(string name, NpgsqlDbType type)
 		{
 			Command.Parameters.Add(new NpgsqlParameter(name, type));
 		}
 
-		public void Set(string name, NpgsqlDbType type, object value)
+		void Add(string name, MySqlDbType type)
 		{
-			Command.Parameters.Add(name, type);
+			Command.Parameters.Add(new MySqlParameter(name, type));
+		}
+
+		void Set(string name, NpgsqlDbType type, object value)
+		{
+			Command.Parameters.Add(new NpgsqlParameter(name, type));
+			Command.Parameters[Command.Parameters.Count - 1].Value = value;
+		}
+
+		void Set(string name, MySqlDbType type, object value)
+		{
+			Command.Parameters.Add(new MySqlParameter(name, type));
 			Command.Parameters[Command.Parameters.Count - 1].Value = value;
 		}
 
 		public void Set(string name, int value)
 		{
-			Set(name, NpgsqlDbType.Integer, value);
+			if (SqlType.Integer is MySqlDbType)
+				Set(name, (MySqlDbType) SqlType.Integer, value);
+			else
+				Set(name, (NpgsqlDbType) SqlType.Integer, value);
+		}
+
+		public void Set(string name, bool value)
+		{
+			if (SqlType.Boolean is MySqlDbType)
+				Set(name, (MySqlDbType) SqlType.Boolean, value);
+			else
+				Set(name, (NpgsqlDbType) SqlType.Boolean, value);
 		}
 
 		public void Set(string name, string value)
 		{
-			Set(name, NpgsqlDbType.Text, value);
+			if (SqlType.Text is MySqlDbType)
+				Set(name, (MySqlDbType) SqlType.Text, value);
+			else
+				Set(name, (NpgsqlDbType) SqlType.Text, value);
 		}
 
 		public void SetEnum(string name, string value)
 		{
-			Set(name, NpgsqlDbType.Varchar, value);
+			if (SqlType.Varchar is MySqlDbType)
+				Set(name, (MySqlDbType) SqlType.Varchar, value);
+			else
+				Set(name, (NpgsqlDbType) SqlType.Varchar, value);
 		}
 
-		public void Set(NpgsqlDbType type, object value)
+		void Set(NpgsqlDbType type, object value)
 		{
 			Enumerator.MoveNext();
-			Command.Parameters.Add(Enumerator.Current, type);
+			Command.Parameters.Add(new NpgsqlParameter(Enumerator.Current, type));
+			Command.Parameters[Command.Parameters.Count - 1].Value = value;
+		}
+
+		void Set(MySqlDbType type, object value)
+		{
+			Enumerator.MoveNext();
+			Command.Parameters.Add(new MySqlParameter(Enumerator.Current, type));
 			Command.Parameters[Command.Parameters.Count - 1].Value = value;
 		}
 
 		public void Set(int value)
 		{
-			Set(NpgsqlDbType.Integer, value);
+			if (SqlType.Integer is MySqlDbType)
+				Set((MySqlDbType) SqlType.Integer, value);
+			else
+				Set((NpgsqlDbType) SqlType.Integer, value);
 		}
 
 		public void Set(int? value)
@@ -71,27 +118,43 @@ namespace RiotControl
 				argument = value.Value;
 			else
 				argument = null;
-			Set(NpgsqlDbType.Integer, argument);
+
+			if (SqlType.Integer is MySqlDbType)
+				Set((MySqlDbType) SqlType.Integer, argument);
+			else
+				Set((NpgsqlDbType) SqlType.Integer, argument);
 		}
 
 		public void Set(string value)
 		{
-			Set(NpgsqlDbType.Text, value);
+			if (SqlType.Text is MySqlDbType)
+				Set((MySqlDbType) SqlType.Text, value);
+			else
+				Set((NpgsqlDbType) SqlType.Text, value);
 		}
 
 		public void Set(double value)
 		{
-			Set(NpgsqlDbType.Double, value);
+			if (SqlType.Double is MySqlDbType)
+				Set((MySqlDbType) SqlType.Double, value);
+			else
+				Set((NpgsqlDbType) SqlType.Double, value);
 		}
 
 		public void Set(bool value)
 		{
-			Set(NpgsqlDbType.Boolean, value);
+			if (SqlType.Boolean is MySqlDbType)
+				Set((MySqlDbType) SqlType.Boolean, value);
+			else
+				Set((NpgsqlDbType) SqlType.Boolean, value);
 		}
 
 		public void SetEnum(string value)
 		{
-			Set(NpgsqlDbType.Varchar, value);
+			if (SqlType.Varchar is MySqlDbType)
+				Set((MySqlDbType) SqlType.Varchar, value);
+			else
+				Set((NpgsqlDbType) SqlType.Varchar, value);
 		}
 
 		void Start()
@@ -114,10 +177,10 @@ namespace RiotControl
 			return rowsAffected;
 		}
 
-		public NpgsqlDataReader ExecuteReader()
+		public DbDataReader ExecuteReader()
 		{
 			Start();
-			NpgsqlDataReader reader = Command.ExecuteReader();
+			DbDataReader reader = Command.ExecuteReader();
 			Stop();
 			return reader;
 		}
@@ -132,7 +195,26 @@ namespace RiotControl
 
 		public void CopyParameters(SQLCommand command)
 		{
-			Command.Parameters.AddRange(command.Command.Parameters.ToArray());
+			foreach(object o in command.Command.Parameters)
+				Command.Parameters.Add(o);
+		}
+
+		private class SqlTypes
+		{
+			public object Integer;
+			public object Text;
+			public object Double;
+			public object Boolean;
+			public object Varchar;
+
+			public SqlTypes(object i, object t, object d, object b, object v)
+			{
+				Integer = i;
+				Text = t;
+				Double = d;
+				Boolean = b;
+				Varchar = v;
+			}
 		}
 	}
 }

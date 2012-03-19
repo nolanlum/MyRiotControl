@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
@@ -57,7 +57,7 @@ namespace RiotControl
 			"time_updated",
 		};
 
-		public Summoner(NpgsqlDataReader dataReader)
+		public Summoner(DbDataReader dataReader)
 		{
 			Reader reader = new Reader(dataReader);
 

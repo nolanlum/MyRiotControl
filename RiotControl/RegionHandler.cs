@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading;
-
-using Npgsql;
 
 using Nil;
 
@@ -177,11 +176,11 @@ namespace RiotControl
 				{
 					if (AutomaticUpdateJobs.Count == 0)
 					{
-						using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+						using (DbConnection database = DatabaseProvider.GetConnection())
 						{
 							SQLCommand command = new SQLCommand("select account_id from summoner where region = cast(:region as region_type) and update_automatically = true", database);
 							command.Set("region", GetRegionEnum());
-							using (NpgsqlDataReader reader = command.ExecuteReader())
+							using (DbDataReader reader = command.ExecuteReader())
 							{
 								while (reader.Read())
 								{

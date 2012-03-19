@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
@@ -24,7 +24,7 @@ namespace RiotControl
 			"game_time",
 		};
 
-		public GameTeamPlayer(NpgsqlDataReader dataReader)
+		public GameTeamPlayer(DbDataReader dataReader)
 			: base(dataReader)
 		{
 		}

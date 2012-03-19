@@ -2,7 +2,7 @@
 
 using Blighttp;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
@@ -104,12 +104,12 @@ namespace RiotControl
 				throw new HandlerException("No region specified");
 			RegionHandler regionHandler = GetRegionHandler(regionName);
 
-			using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
 				SQLCommand select = GetCommand("select account_id from summoner where lower(summoner_name) = lower(:summoner_name) and region = cast(:region as region_type)", database);
 				select.Set("summoner_name", summonerName);
 				select.SetEnum("region", regionHandler.GetRegionEnum());
-				using (NpgsqlDataReader reader = select.ExecuteReader())
+				using (DbDataReader reader = select.ExecuteReader())
 				{
 					if (reader.Read())
 					{
@@ -144,7 +144,7 @@ namespace RiotControl
 			string regionName = (string)arguments[0];
 			int accountId = (int)arguments[1];
 
-			using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
 				Summoner summoner = LoadSummoner(regionName, accountId, database);
 				LoadSummonerRating(summoner, database);
@@ -170,7 +170,7 @@ namespace RiotControl
 			string regionName = (string)arguments[0];
 			int accountId = (int)arguments[1];
 
-			using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
 				Summoner summoner = LoadSummoner(regionName, accountId, database);
 				List<GameTeamPlayer> games = LoadSummonerGames(summoner, database);
@@ -201,7 +201,7 @@ namespace RiotControl
 			string regionName = (string)arguments[0];
 			int accountId = (int)arguments[1];
 			RegionHandler regionHandler = GetRegionHandler(regionName);
-			using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
 				SQLCommand command = GetCommand("update summoner set update_automatically = true where region = cast(:region as region_type) and account_id = :account_id", database);
 				command.SetEnum("region", regionHandler.GetRegionEnum());

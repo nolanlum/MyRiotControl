@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-using Npgsql;
+using System.Data.Common;
 
 using Blighttp;
 
@@ -8,18 +8,18 @@ namespace RiotControl
 {
 	partial class WebService
 	{
-		SQLCommand GetCommand(string query, NpgsqlConnection database, params object[] arguments)
+		SQLCommand GetCommand(string query, DbConnection database, params object[] arguments)
 		{
 			return new SQLCommand(query, database, WebServiceProfiler, arguments);
 		}
 
-		Summoner LoadSummoner(string regionName, int accountId, NpgsqlConnection database)
+		Summoner LoadSummoner(string regionName, int accountId, DbConnection database)
 		{
 			RegionHandler regionHandler = GetRegionHandler(regionName);
 			SQLCommand select = GetCommand("select {0} from summoner where region = cast(:region as region_type) and account_id = :account_id", database, Summoner.GetFields());
 			select.SetEnum("region", regionHandler.GetRegionEnum());
 			select.Set("account_id", accountId);
-			using (NpgsqlDataReader reader = select.ExecuteReader())
+			using (DbDataReader reader = select.ExecuteReader())
 			{
 				Summoner summoner = null;
 				if (reader.Read())
@@ -39,11 +39,11 @@ namespace RiotControl
 				return output;
 		}
 
-		void LoadSummonerRating(Summoner summoner, NpgsqlConnection database)
+		void LoadSummonerRating(Summoner summoner, DbConnection database)
 		{
 			SQLCommand select = GetCommand("select {0} from summoner_rating where summoner_id = :summoner_id", database, SummonerRating.GetFields());
 			select.Set("summoner_id", summoner.Id);
-			using (NpgsqlDataReader reader = select.ExecuteReader())
+			using (DbDataReader reader = select.ExecuteReader())
 			{
 				while (reader.Read())
 				{
@@ -61,11 +61,11 @@ namespace RiotControl
 			}
 		}
 
-		void LoadSummonerRankedStatistics(Summoner summoner, NpgsqlConnection database)
+		void LoadSummonerRankedStatistics(Summoner summoner, DbConnection database)
 		{
 			SQLCommand select = GetCommand("select {0} from summoner_ranked_statistics where summoner_id = :summoner_id", database, SummonerRankedStatistics.GetFields());
 			select.Set("summoner_id", summoner.Id);
-			using (NpgsqlDataReader reader = select.ExecuteReader())
+			using (DbDataReader reader = select.ExecuteReader())
 			{
 				while (reader.Read())
 				{
@@ -77,7 +77,7 @@ namespace RiotControl
 			}
 		}
 
-		List<AggregatedChampionStatistics> LoadAggregatedChampionStatistics(Summoner summoner, MapType map, GameModeType gameMode, NpgsqlConnection database)
+		List<AggregatedChampionStatistics> LoadAggregatedChampionStatistics(Summoner summoner, MapType map, GameModeType gameMode, DbConnection database)
 		{
 			const string query =
 				"with source as " +
@@ -97,7 +97,7 @@ namespace RiotControl
 			select.SetEnum("result_map", map.ToEnumString());
 			select.SetEnum("game_mode", gameMode.ToEnumString());
 			select.Set("summoner_id", summoner.Id);
-			using (NpgsqlDataReader reader = select.ExecuteReader())
+			using (DbDataReader reader = select.ExecuteReader())
 			{
 				List<AggregatedChampionStatistics> output = new List<AggregatedChampionStatistics>();
 				while (reader.Read())
@@ -114,10 +114,10 @@ namespace RiotControl
 		void LoadChampionNames()
 		{
 			ChampionNames = new Dictionary<int, string>();
-			using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
 				SQLCommand select = GetCommand("select champion_id, champion_name from champion_name", database);
-				using (NpgsqlDataReader reader = select.ExecuteReader())
+				using (DbDataReader reader = select.ExecuteReader())
 				{
 					while (reader.Read())
 					{
@@ -132,10 +132,10 @@ namespace RiotControl
 		void LoadItemInformation()
 		{
 			Items = new Dictionary<int, ItemInformation>();
-			using (NpgsqlConnection database = DatabaseProvider.GetConnection())
+			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
 				SQLCommand select = GetCommand("select item_id, item_name, description from item_information", database);
-				using (NpgsqlDataReader dataReader = select.ExecuteReader())
+				using (DbDataReader dataReader = select.ExecuteReader())
 				{
 					while (dataReader.Read())
 					{

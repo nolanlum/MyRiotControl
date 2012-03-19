@@ -1,4 +1,4 @@
-﻿using Npgsql;
+﻿using System.Data.Common;
 
 namespace RiotControl
 {
@@ -27,7 +27,7 @@ namespace RiotControl
 			"top_rating",
 		};
 
-		public SummonerRating(NpgsqlDataReader dataReader)
+		public SummonerRating(DbDataReader dataReader)
 		{
 			Reader reader = new Reader(dataReader);
 

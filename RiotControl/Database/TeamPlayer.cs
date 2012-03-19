@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
@@ -183,7 +183,7 @@ namespace RiotControl
 			"rank",
 		};
 
-		public TeamPlayer(NpgsqlDataReader dataReader)
+		public TeamPlayer(DbDataReader dataReader)
 		{
 			Reader reader = new Reader(dataReader);
 

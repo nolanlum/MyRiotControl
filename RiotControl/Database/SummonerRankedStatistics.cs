@@ -1,6 +1,6 @@
 ﻿using System;
 
-using Npgsql;
+using System.Data.Common;
 
 namespace RiotControl
 {
@@ -75,7 +75,7 @@ namespace RiotControl
 
 		};
 
-		public SummonerRankedStatistics(NpgsqlDataReader dataReader)
+		public SummonerRankedStatistics(DbDataReader dataReader)
 		{
 			Reader reader = new Reader(dataReader);
 

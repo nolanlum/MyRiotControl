@@ -1,11 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-
-using Npgsql;
-
-using LibOfLegends;
+﻿using System.Data.Common;
 
 using com.riotgames.platform.summoner;
+
+using LibOfLegends;
 
 namespace RiotControl
 {
@@ -19,7 +16,7 @@ namespace RiotControl
 			SQLCommand nameLookup = Command("select id, account_id, summoner_name, summoner_level from summoner where region = cast(:region as region_type) and lower(summoner_name) = lower(:name)");
 			nameLookup.SetEnum("region", RegionProfile.RegionEnum);
 			nameLookup.Set("name", job.SummonerName);
-			using (NpgsqlDataReader nameReader = nameLookup.ExecuteReader())
+			using (DbDataReader nameReader = nameLookup.ExecuteReader())
 			{
 				if (nameReader.Read())
 				{
@@ -46,7 +43,7 @@ namespace RiotControl
 					SQLCommand check = Command("select id from summoner where account_id = :account_id and region = cast(:region as region_type)");
 					check.Set("account_id", publicSummoner.acctId);
 					check.SetEnum("region", RegionProfile.RegionEnum);
-					using (NpgsqlDataReader checkReader = check.ExecuteReader())
+					using (DbDataReader checkReader = check.ExecuteReader())
 					{
 						if (checkReader.Read())
 						{

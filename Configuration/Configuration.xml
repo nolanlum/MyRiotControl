@@ -6,10 +6,13 @@
     <Port>9000</Port>
   </Web>
   <Database>
+	<Provider>PostgreSQL</Provider>
     <Host>127.0.0.1</Host>
     <Port>5432</Port>
     <Username>username</Username>
     <Database>database</Database>
+    <MinimumPoolSize>0</MinimumPoolSize>
+    <MaximumPoolSize>50</MaximumPoolSize>
   </Database>
   <Authentication>
     <ClientVersion>1.55.12_03_08_12_46</ClientVersion>
