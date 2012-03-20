@@ -15,6 +15,7 @@ namespace RiotControl
 			{
 				if (summary.playerStatSummaryType != target)
 					continue;
+
 				SQLCommand update = Command("update summoner_rating set wins = :wins, losses = :losses, leaves = :leaves, current_rating = :current_rating, top_rating = :top_rating where summoner_id = :summoner_id and rating_map = cast(:rating_map as map_type) and game_mode = cast(:game_mode as game_mode_type)");
 				if (forceNullRating)
 				{
@@ -93,8 +94,14 @@ namespace RiotControl
 				"(select max(rating + rating_change) as top_rating from source) " +
 				"as top_rating " +
 				") " +
-				"update summoner_rating set current_rating = (select current_rating from rating), top_rating = (select top_rating from rating) where summoner_id = :summoner_id and rating_map = cast('summoners_rift' as map_type) and game_mode = cast('normal' as game_mode_type);";
-			SQLCommand update = Command(query);
+				"update summoner_rating set current_rating = (select current_rating from rating), top_rating = (select top_rating from rating) where summoner_id = :summoner_id and rating_map = cast('summoners_rift' as map_type) and game_mode = cast('normal' as game_mode_type);",
+				myquery =
+@"UPDATE summoner_rating
+SET current_rating = (SELECT current_rating FROM rating_current WHERE summoner_id = ?summoner_id),
+  top_rating = (SELECT top_rating FROM rating_top WHERE summoner_id = ?summoner_id)
+WHERE summoner_id = ?summoner_id
+AND rating_map = 'summoners_rift' AND game_mode = 'normal';";
+			SQLCommand update = Database is MySql.Data.MySqlClient.MySqlConnection ? Command(myquery) : Command(query);
 			update.Set("summoner_id", summoner.Id);
 			update.Execute();
 		}

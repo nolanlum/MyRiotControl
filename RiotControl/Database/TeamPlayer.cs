@@ -226,7 +226,19 @@ namespace RiotControl
 			ChampionLevel = reader.Integer();
 
 			//Not sure about this
-			Items = (int[])reader.Get();
+			var tmp = reader.Get();
+			Items = tmp as int[];
+
+			if (Items == null)
+			{
+				var items = tmp as byte[];
+				var itemspad = new byte[items.Length + items.Length % 4];
+				Array.Copy(items, itemspad, items.Length);
+				Items = new int[itemspad.Length / 4];
+
+				for (int i = 0; i < itemspad.Length / 4; i++)
+					Items[i] = BitConverter.ToInt32(itemspad, i * 4);
+			}
 
 			Kills = reader.Integer();
 			Deaths = reader.Integer();

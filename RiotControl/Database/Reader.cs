@@ -27,7 +27,9 @@ namespace RiotControl
 			object value = Get();
 			//Hack for aggregates
 			if (value.GetType() == typeof(long))
-				return (int)(long)value;
+				return (int) (long) value;
+			else if (value.GetType() == typeof(decimal))
+				return (int) (decimal) value;
 			else
 				return (int)value;
 		}
@@ -52,7 +54,12 @@ namespace RiotControl
 
 		public bool Boolean()
 		{
-			return (bool)Get();
+			object tryBool = Get();
+			bool? tryTwo = tryBool as bool?;
+
+			if (tryTwo.HasValue) return tryTwo.Value;
+
+			return (ulong) tryBool == 1;
 		}
 
 		public double Double()

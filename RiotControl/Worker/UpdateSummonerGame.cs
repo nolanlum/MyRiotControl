@@ -36,61 +36,61 @@ namespace RiotControl
 			//At first we must determine if the game is already in the database
 			SQLCommand check = Command("select game_result.id, game_result.team1_id, game_result.team2_id, team.is_blue_team from game_result, team where game_result.game_id = :game_id and game_result.team1_id = team.id");
 			check.Set("game_id", game.gameId);
-			using (var reader = check.ExecuteReader())
+
+			object[] row = check.ExecuteSingleRow();
+			if (row != null)
 			{
-				if (reader.Read())
-				{
-					//The game is already in the database
-					gameId = (int)reader[0];
-					int team1Id = (int)reader[1];
-					int team2Id = (int)reader[2];
-					bool team1IsBlue = (bool)reader[3];
-					if (isBlueTeam && team1IsBlue)
-						summonerTeamId = team1Id;
-					else
-						summonerTeamId = team2Id;
-					//Check if the game result for this player has already been stored
-					SQLCommand gameCheck = Command("select count(*) from team_player where (team_id = :team1_id or team_id = :team2_id) and summoner_id = :summoner_id");
-					gameCheck.Set("team1_id", team1Id);
-					gameCheck.Set("team2_id", team2Id);
-					gameCheck.Set("summoner_id", summoner.Id);
-					long count = (long)gameCheck.ExecuteScalar();
-					if (count > 0)
-					{
-						//The result of this game for this player has already been stored in the database, there is no work to be done
-						transaction.Rollback();
-						return;
-					}
-					//The game is already stored in the database but the results of this player were previously unknown
-					//This means that this player must be removed from the list of unknown players for this game
-					//I'm too lazy to figure out what team the player belongs to right now so let's just perform two deletions for now, one of which will fail
-					int[] teamIds = { team1Id, team2Id };
-					foreach (int teamId in teamIds)
-					{
-						SQLCommand delete = Command("delete from missing_team_player where team_id = :team_id and account_id = :account_id");
-						delete.Set("team_id", teamId);
-						delete.Set("account_id", summoner.AccountId);
-						delete.Execute();
-					}
-				}
-				else
-				{
-					//The game is not in the database yet
-					//Need to create the team entries first
-					SQLCommand newTeam = Command("insert into team (is_blue_team) values (:is_blue_team)");
-					newTeam.Set("is_blue_team", isBlueTeam);
-					newTeam.Execute();
-					int team1Id = GetInsertId("team");
+				//The game is already in the database
+				gameId = (int) row[0];
+				int team1Id = (int) row[1];
+				int team2Id = (int) row[2];
+				bool team1IsBlue = row[3].TryAsBool();
+				if (isBlueTeam && team1IsBlue)
 					summonerTeamId = team1Id;
-					newTeam.Set("is_blue_team", !isBlueTeam);
-					newTeam.Execute();
-					int team2Id = GetInsertId("team");
-					Dictionary<int, int> teamIdDictionary = new Dictionary<int, int>()
+				else
+					summonerTeamId = team2Id;
+				//Check if the game result for this player has already been stored
+				SQLCommand gameCheck = Command("select count(*) from team_player where (team_id = :team1_id or team_id = :team2_id) and summoner_id = :summoner_id");
+				gameCheck.Set("team1_id", team1Id);
+				gameCheck.Set("team2_id", team2Id);
+				gameCheck.Set("summoner_id", summoner.Id);
+				long count = (long) gameCheck.ExecuteScalar();
+				if (count > 0)
+				{
+					//The result of this game for this player has already been stored in the database, there is no work to be done
+					transaction.Rollback();
+					return;
+				}
+				//The game is already stored in the database but the results of this player were previously unknown
+				//This means that this player must be removed from the list of unknown players for this game
+				//I'm too lazy to figure out what team the player belongs to right now so let's just perform two deletions for now, one of which will fail
+				int[] teamIds = { team1Id, team2Id };
+				foreach (int teamId in teamIds)
+				{
+					SQLCommand delete = Command("delete from missing_team_player where team_id = :team_id and account_id = :account_id");
+					delete.Set("team_id", teamId);
+					delete.Set("account_id", summoner.AccountId);
+					delete.Execute();
+				}
+			}
+			else
+			{
+				//The game is not in the database yet
+				//Need to create the team entries first
+				SQLCommand newTeam = Command("insert into team (is_blue_team) values (:is_blue_team)");
+				newTeam.Set("is_blue_team", isBlueTeam);
+				newTeam.Execute();
+				int team1Id = GetInsertId("team");
+				summonerTeamId = team1Id;
+				newTeam.Set("is_blue_team", !isBlueTeam);
+				newTeam.Execute();
+				int team2Id = GetInsertId("team");
+				Dictionary<int, int> teamIdDictionary = new Dictionary<int, int>()
 					{
 						{game.teamId, team1Id},
 						{isBlueTeam ? purpleId : blueId, team2Id},
 					};
-					List<string> fields = new List<string>()
+				List<string> fields = new List<string>()
 					{
 						"game_id",
 						"result_map",
@@ -100,93 +100,94 @@ namespace RiotControl
 						"team1_id",
 						"team2_id",
 					};
-					string mapEnum;
-					string gameModeEnum;
-					switch (game.gameMapId)
+				string mapEnum;
+				string gameModeEnum;
+				switch (game.gameMapId)
+				{
+					//Autumn
+					case 1:
+					//No idea what 2 means
+					case 2:
+					//Not sure either, encountered this in some games from 4 months ago on an inactive account
+					case 3:
+					//Winter
+					case 6:
+						mapEnum = "summoners_rift";
+						break;
+
+					case 4:
+						mapEnum = "twisted_treeline";
+						break;
+
+					case 8:
+						mapEnum = "dominion";
+						break;
+
+					default:
+						throw new Exception(string.Format("Unknown game map ID in the match history of {0}: {1}", summoner.Name, game.gameMapId));
+				}
+				if (game.gameType == "PRACTICE_GAME")
+					gameModeEnum = "custom";
+				else
+				{
+					switch (game.queueType)
 					{
-						//Autumn
-						case 1:
-						//No idea what 2 means
-						case 2:
-						//Not sure either, encountered this in some games from 4 months ago on an inactive account
-						case 3:
-						//Winter
-						case 6:
-							mapEnum = "summoners_rift";
+						case "RANKED_TEAM_3x3":
+						case "RANKED_TEAM_5x5":
+						case "RANKED_PREMADE_3x3":
+						case "RANKED_PREMADE_5x5":
+							gameModeEnum = "premade";
 							break;
 
-						case 4:
-							mapEnum = "twisted_treeline";
+						case "NORMAL":
+							gameModeEnum = "normal";
 							break;
 
-						case 8:
-							mapEnum = "dominion";
+						case "ODIN_UNRANKED":
+							gameModeEnum = "normal";
+							break;
+
+						case "RANKED_SOLO_5x5":
+							gameModeEnum = "solo";
+							break;
+
+						case "BOT":
+							gameModeEnum = "bot";
 							break;
 
 						default:
-							throw new Exception(string.Format("Unknown game map ID in the match history of {0}: {1}", summoner.Name, game.gameMapId));
+							{
+								transaction.Rollback();
+								throw new Exception(string.Format("Unknown queue type in the match history of {0}: {1}", summoner.Name, game.queueType));
+							}
 					}
-					if (game.gameType == "PRACTICE_GAME")
-						gameModeEnum = "custom";
-					else
-					{
-						switch (game.queueType)
-						{
-							case "RANKED_TEAM_3x3":
-							case "RANKED_TEAM_5x5":
-							case "RANKED_PREMADE_3x3":
-							case "RANKED_PREMADE_5x5":
-								gameModeEnum = "premade";
-								break;
-
-							case "NORMAL":
-								gameModeEnum = "normal";
-								break;
-
-							case "ODIN_UNRANKED":
-								gameModeEnum = "normal";
-								break;
-
-							case "RANKED_SOLO_5x5":
-								gameModeEnum = "solo";
-								break;
-
-							case "BOT":
-								gameModeEnum = "bot";
-								break;
-
-							default:
-								{
-									transaction.Rollback();
-									throw new Exception(string.Format("Unknown queue type in the match history of {0}: {1}", summoner.Name, game.queueType));
-								}
-						}
-					}
-					string queryFields = GetGroupString(fields);
-					string queryValues = ":game_id, cast(:result_map as map_type), cast(:game_mode as game_mode_type), to_timestamp(:game_time), :team1_won, :team1_id, :team2_id";
-					SQLCommand newGame = Command("insert into game_result ({0}) values ({1})", queryFields, queryValues);
-					newGame.SetFieldNames(fields);
-					newGame.Set(game.gameId);
-					newGame.Set(mapEnum);
-					newGame.Set(gameModeEnum);
-					newGame.Set(GetTimestamp(game.createDate));
-					newGame.Set(gameResult.Win);
-					newGame.Set(team1Id);
-					newGame.Set(team2Id);
-					newGame.Execute();
-					gameId = GetInsertId("game_result");
-					//We need to create a list of unknown players for this game so they can get updated in future if necessary
-					//Otherwise it is unclear who participated in this game
-					//Retrieving their stats at this point is too expensive and hence undesirable
-					foreach (var player in game.fellowPlayers)
-					{
-						SQLCommand missingPlayer = Command("insert into missing_team_player (team_id, champion_id, account_id) values (:team_id, :champion_id, :account_id)");
-						missingPlayer.Set("team_id", teamIdDictionary[player.teamId]);
-						missingPlayer.Set("champion_id", player.championId);
-						//It's called summonerId but it's really the account ID (I think)
-						missingPlayer.Set("account_id", player.summonerId);
-						missingPlayer.Execute();
-					}
+				}
+				string queryFields = GetGroupString(fields);
+				string queryValues = Database is MySql.Data.MySqlClient.MySqlConnection ?
+					"?game_id, ?result_map, ?game_mode, FROM_UNIXTIME(?game_time), ?team1_won, ?team1_id, ?team2_id" : 
+					":game_id, cast(:result_map as map_type), cast(:game_mode as game_mode_type), to_timestamp(:game_time), :team1_won, :team1_id, :team2_id";
+				SQLCommand newGame = Command("insert into game_result ({0}) values ({1})", queryFields, queryValues);
+				newGame.SetFieldNames(fields);
+				newGame.Set(game.gameId);
+				newGame.Set(mapEnum);
+				newGame.Set(gameModeEnum);
+				newGame.Set(GetTimestamp(game.createDate));
+				newGame.Set(gameResult.Win);
+				newGame.Set(team1Id);
+				newGame.Set(team2Id);
+				newGame.Execute();
+				gameId = GetInsertId("game_result");
+				//We need to create a list of unknown players for this game so they can get updated in future if necessary
+				//Otherwise it is unclear who participated in this game
+				//Retrieving their stats at this point is too expensive and hence undesirable
+				foreach (var player in game.fellowPlayers)
+				{
+					SQLCommand missingPlayer = Command("insert into missing_team_player (team_id, champion_id, account_id) values (:team_id, :champion_id, :account_id)");
+					missingPlayer.Set("team_id", teamIdDictionary[player.teamId]);
+					missingPlayer.Set("champion_id", player.championId);
+					//It's called summonerId but it's really the account ID (I think)
+					missingPlayer.Set("account_id", player.summonerId);
+					missingPlayer.Execute();
 				}
 			}
 			InsertGameResult(summoner, gameId, summonerTeamId, game, gameResult);

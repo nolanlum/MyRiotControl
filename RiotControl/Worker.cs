@@ -110,10 +110,16 @@ namespace RiotControl
 
 		int GetInsertId(string tableName)
 		{
-			SQLCommand currentValue = Command("select currval('{0}_id_seq')", tableName);
+			SQLCommand currentValue;
+
+			if (Database is MySql.Data.MySqlClient.MySqlConnection)
+				currentValue = Command("SELECT MAX(id) FROM {0};", tableName);
+			else
+				currentValue = Command("select currval('{0}_id_seq')", tableName);
 			object result = currentValue.ExecuteScalar();
-			long id = (long)result;
-			return (int)id;
+
+			if (result is long) return (int) (long) result;
+			else return (int) result;
 		}
 
 		//This method tells the worker that a new job has been added and should attempt to process jobs from the queues
@@ -139,32 +145,31 @@ namespace RiotControl
 			SQLCommand nameLookup = Command("select id, account_id, summoner_name from summoner where region = cast(:region as region_type) and account_id = :account_id");
 			nameLookup.SetEnum("region", RegionProfile.RegionEnum);
 			nameLookup.Set("account_id", job.AccountId);
-			using (DbDataReader nameReader = nameLookup.ExecuteReader())
+
+			object[] row = nameLookup.ExecuteSingleRow();
+			if (row != null)
 			{
-				if (nameReader.Read())
+				int id = (int) row[0];
+				int accountId = (int) row[1];
+				string name = (string) row[2];
+				UpdateSummoner(new SummonerDescription(name, id, accountId), false);
+				job.ProvideResult(JobQueryResult.Success);
+			}
+			else
+			{
+				//The account isn't in the database yet, add it
+				AllPublicSummonerDataDTO publicSummonerData = RPC.GetAllPublicSummonerDataByAccount(job.AccountId);
+				if (publicSummonerData != null)
 				{
-					int id = (int)nameReader[0];
-					int accountId = (int)nameReader[1];
-					string name = (string)nameReader[2];
-					UpdateSummoner(new SummonerDescription(name, id, accountId), false);
+					var summoner = publicSummonerData.summoner;
+					int id = InsertNewSummoner(summoner.acctId, summoner.sumId, summoner.name, summoner.internalName, publicSummonerData.summonerLevel.summonerLevel, summoner.profileIconId);
+					UpdateSummoner(new SummonerDescription(summoner.name, id, summoner.acctId), false);
 					job.ProvideResult(JobQueryResult.Success);
 				}
 				else
 				{
-					//The account isn't in the database yet, add it
-					AllPublicSummonerDataDTO publicSummonerData = RPC.GetAllPublicSummonerDataByAccount(job.AccountId);
-					if (publicSummonerData != null)
-					{
-						var summoner = publicSummonerData.summoner;
-						int id = InsertNewSummoner(summoner.acctId, summoner.sumId, summoner.name, summoner.internalName, publicSummonerData.summonerLevel.summonerLevel, summoner.profileIconId);
-						UpdateSummoner(new SummonerDescription(summoner.name, id, summoner.acctId), false);
-						job.ProvideResult(JobQueryResult.Success);
-					}
-					else
-					{
-						//No such summoner
-						job.ProvideResult(JobQueryResult.NotFound);
-					}
+					//No such summoner
+					job.ProvideResult(JobQueryResult.NotFound);
 				}
 			}
 		}

@@ -106,39 +106,33 @@ namespace RiotControl
 
 			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
-				SQLCommand select;
-
-				if (database is MySql.Data.MySqlClient.MySqlConnection)
-					select = GetCommand("select account_id from summoner where summoner_name = :summoner_name and region = :region", database);
-				else
-					select = GetCommand("select account_id from summoner where lower(summoner_name) = lower(:summoner_name) and region = cast(:region as region_type)", database);
+				SQLCommand select = GetCommand("select account_id from summoner where lower(summoner_name) = lower(:summoner_name) and region = cast(:region as region_type)", database);
 
 				select.Set("summoner_name", summonerName);
 				select.SetEnum("region", regionHandler.GetRegionEnum());
-				using (DbDataReader reader = select.ExecuteReader())
+
+				object[] row = select.ExecuteSingleRow();
+				if (row != null)
 				{
-					if (reader.Read())
+					int accountId = (int) row[0];
+					return Reply.Referral("/RiotControl" + ViewSummonerHandler.GetPath(regionName, accountId.ToString()));
+				}
+				else
+				{
+					LookupJob job = regionHandler.PerformSummonerLookup(summonerName);
+					switch (job.Result)
 					{
-						int accountId = (int)reader[0];
-						return Reply.Referral(ViewSummonerHandler.GetPath(regionName, accountId.ToString()));
-					}
-					else
-					{
-						LookupJob job = regionHandler.PerformSummonerLookup(summonerName);
-						switch (job.Result)
-						{
-							case JobQueryResult.Success:
-								return Reply.Referral(ViewSummonerHandler.GetPath(regionName, job.AccountId.ToString()));
+						case JobQueryResult.Success:
+							return Reply.Referral("/RiotControl" + ViewSummonerHandler.GetPath(regionName, job.AccountId.ToString()));
 
-							case JobQueryResult.NotFound:
-								return Template("Search", GetSearchForm("Unable to find summoner.", summonerName, regionName), false);
+						case JobQueryResult.NotFound:
+							return Template("Search", GetSearchForm("Unable to find summoner.", summonerName, regionName), false);
 
-							case JobQueryResult.Timeout:
-								return Template("Search", GetSearchForm("A timeout has occurred.", summonerName, regionName), false);
+						case JobQueryResult.Timeout:
+							return Template("Search", GetSearchForm("A timeout has occurred.", summonerName, regionName), false);
 
-							default:
-								throw new HandlerException("Unknown job result");
-						}
+						default:
+							throw new HandlerException("Unknown job result");
 					}
 				}
 			}
@@ -147,8 +141,8 @@ namespace RiotControl
 		Reply ViewSummoner(Request request)
 		{
 			var arguments = request.Arguments;
-			string regionName = (string)arguments[0];
-			int accountId = (int)arguments[1];
+			string regionName = (string) arguments[0];
+			int accountId = (int) arguments[1];
 
 			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
@@ -173,8 +167,8 @@ namespace RiotControl
 		Reply ViewSummonerGames(Request request)
 		{
 			var arguments = request.Arguments;
-			string regionName = (string)arguments[0];
-			int accountId = (int)arguments[1];
+			string regionName = (string) arguments[0];
+			int accountId = (int) arguments[1];
 
 			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
@@ -191,8 +185,8 @@ namespace RiotControl
 		Reply LoadAccountData(Request request)
 		{
 			var arguments = request.Arguments;
-			string regionName = (string)arguments[0];
-			int accountId = (int)arguments[1];
+			string regionName = (string) arguments[0];
+			int accountId = (int) arguments[1];
 			RegionHandler regionHandler = GetRegionHandler(regionName);
 			AccountIdJob job = regionHandler.PerformManualSummonerUpdate(accountId);
 			SummonerUpdateResult result = new SummonerUpdateResult(job);
@@ -204,8 +198,8 @@ namespace RiotControl
 		Reply AutomaticUpdates(Request request)
 		{
 			var arguments = request.Arguments;
-			string regionName = (string)arguments[0];
-			int accountId = (int)arguments[1];
+			string regionName = (string) arguments[0];
+			int accountId = (int) arguments[1];
 			RegionHandler regionHandler = GetRegionHandler(regionName);
 			using (DbConnection database = DatabaseProvider.GetConnection())
 			{

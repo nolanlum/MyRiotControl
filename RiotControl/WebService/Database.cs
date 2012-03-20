@@ -92,8 +92,49 @@ namespace RiotControl
 				"left outer join " +
 				"(select champion_id, count(*) as losses from source where won = false group by champion_id) " +
 				"as champion_losses " +
-				"on statistics.champion_id = champion_losses.champion_id;";
-			SQLCommand select = GetCommand(query, database);
+				"on statistics.champion_id = champion_losses.champion_id;",
+				myquery =
+@"SELECT statistics.champion_id, coalesce(champion_wins.wins, 0) as wins, coalesce(champion_losses.losses, 0) as losses, statistics.kills, statistics.deaths, statistics.assists, statistics.gold, statistics.minion_kills
+FROM
+(
+  SELECT source.champion_id, sum(source.kills) as kills, sum(source.deaths) as deaths, sum(source.assists) as assists, sum(source.gold) as gold, sum(source.minion_kills) as minion_kills
+  FROM source
+  WHERE source.result_map = ?result_map AND
+    source.game_mode = ?game_mode AND
+    source.summoner_id = ?summoner_id
+  GROUP BY source.champion_id
+)
+AS statistics
+
+LEFT OUTER JOIN
+(
+  SELECT champion_id, count(*) as wins
+  FROM source
+  WHERE source.won = true AND
+    source.result_map = ?result_map AND
+    source.game_mode = ?game_mode AND
+    source.summoner_id = ?summoner_id
+  GROUP BY champion_id
+) champion_wins
+ON statistics.champion_id = champion_wins.champion_id
+
+LEFT OUTER JOIN
+(
+  SELECT champion_id, count(*) as losses
+  FROM source
+  WHERE source.won = false AND
+    source.result_map = ?result_map AND
+    source.game_mode = ?game_mode AND
+    source.summoner_id = ?summoner_id
+  GROUP BY champion_id
+) champion_losses
+ON statistics.champion_id = champion_losses.champion_id;";
+
+			SQLCommand select;
+			if (database is MySql.Data.MySqlClient.MySqlConnection)
+				select = GetCommand(myquery, database);
+			else 
+				select = GetCommand(query, database);
 			select.SetEnum("result_map", map.ToEnumString());
 			select.SetEnum("game_mode", gameMode.ToEnumString());
 			select.Set("summoner_id", summoner.Id);

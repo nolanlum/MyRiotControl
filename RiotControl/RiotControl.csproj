@@ -49,6 +49,12 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>RiotControl.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -122,15 +128,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="RiotControl.snk" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Blighttp\Blighttp\Blighttp.csproj">
       <Project>{42B53038-D8CE-4A10-8E3F-BBDD6E1434E2}</Project>
       <Name>Blighttp</Name>
     </ProjectReference>
-    <ProjectReference Include="..\FluorineFXMods\Source\FluorineFx\FluorineFx-4.0.csproj">
+    <ProjectReference Include="..\FluorineFXMods\Source\FluorineFx\FluorineFx-2.0.csproj">
       <Project>{A9B8375B-579D-4F8A-B00C-F2828DB58F3A}</Project>
-      <Name>FluorineFx-4.0</Name>
+      <Name>FluorineFx-2.0</Name>
     </ProjectReference>
     <ProjectReference Include="..\LibOfLegends\LibOfLegends\LibOfLegends.csproj">
       <Project>{2B142E37-E05C-460E-8F22-306F5D01B567}</Project>

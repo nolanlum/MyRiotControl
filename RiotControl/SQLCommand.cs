@@ -5,11 +5,15 @@ using MySql.Data.MySqlClient;
 using Npgsql;
 using NpgsqlTypes;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System;
 
 namespace RiotControl
 {
 	class SQLCommand
 	{
+		static Regex cast_replace = new Regex("cast\\((.*?) as .*?\\)");
+
 		public string Query;
 		public DbCommand Command;
 
@@ -26,7 +30,9 @@ namespace RiotControl
 			// All logic assumes MySQL is the "edge case", and the fallback is postgre.
 			if (connection is MySqlConnection)
 			{
-				Query = Query.Replace(":", "?");
+				Query = Query.Replace(":", "?").Replace("at time zone 'UTC'", "");
+				Query = cast_replace.Replace(Query, "$1");
+
 				SqlType = new SqlTypes(MySqlDbType.Int32, MySqlDbType.Text, MySqlDbType.Double, MySqlDbType.Bit, MySqlDbType.VarChar);
 			}
 			else
@@ -54,14 +60,16 @@ namespace RiotControl
 
 		void Set(string name, NpgsqlDbType type, object value)
 		{
-			Command.Parameters.Add(new NpgsqlParameter(name, type));
-			Command.Parameters[Command.Parameters.Count - 1].Value = value;
+			if(!Command.Parameters.Contains(name))
+				Command.Parameters.Add(new NpgsqlParameter(name, type));
+			Command.Parameters[name].Value = value;
 		}
 
 		void Set(string name, MySqlDbType type, object value)
 		{
-			Command.Parameters.Add(new MySqlParameter(name, type));
-			Command.Parameters[Command.Parameters.Count - 1].Value = value;
+			if (!Command.Parameters.Contains(name))
+				Command.Parameters.Add(new MySqlParameter(name, type));
+			Command.Parameters[name].Value = value;
 		}
 
 		void Set(NpgsqlDbType type, object value)
@@ -151,9 +159,12 @@ namespace RiotControl
 			if (SqlType.Integer is MySqlDbType)
 			{
 				// MySQL doesn't support arrays, so pack the array into a blob.
-				var conv = new IntegerByteArray();
-				conv.intArray = value;
-				Set(MySqlDbType.Blob, conv.byteArray);
+				byte[] b = new byte[value.Length * 4];
+
+				for (int i = 0; i < value.Length; i++)
+					Array.Copy(BitConverter.GetBytes(value[i]), 0, b, i * 4, 4);
+
+				Set(MySqlDbType.Blob, b);
 			}
 			else
 				Set(NpgsqlDbType.Array | NpgsqlDbType.Integer, value);
@@ -219,6 +230,26 @@ namespace RiotControl
 			return reader;
 		}
 
+		public object[] ExecuteSingleRow()
+		{
+			Start();
+
+			using (DbDataReader reader = Command.ExecuteReader())
+			{
+				if (!reader.Read())
+				{
+					Stop();
+					return null;
+				}
+
+				object[] data = new object[reader.FieldCount];
+				reader.GetValues(data);
+
+				Stop();
+				return data;
+			}
+		}
+
 		public object ExecuteScalar()
 		{
 			Start();
@@ -250,11 +281,20 @@ namespace RiotControl
 				Varchar = v;
 			}
 		}
+	}
 
-		[StructLayout(LayoutKind.Explicit)]
-		private struct IntegerByteArray {
-			[FieldOffset(0)] public int[] intArray;
-			[FieldOffset(0)] public byte[] byteArray;
+	public static class Extensions {
+		public static bool TryAsBool(this object o)
+		{
+			if (o is bool)
+				return (bool) o;
+			else if (o is ulong)
+				return (ulong) o == 1;
+			else if (o is uint)
+				return (uint) o == 1;
+			else if (o is byte)
+				return (byte) o == 1;
+			else return false;
 		}
 	}
 }
