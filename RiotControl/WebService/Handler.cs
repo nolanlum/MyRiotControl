@@ -106,7 +106,13 @@ namespace RiotControl
 
 			using (DbConnection database = DatabaseProvider.GetConnection())
 			{
-				SQLCommand select = GetCommand("select account_id from summoner where lower(summoner_name) = lower(:summoner_name) and region = cast(:region as region_type)", database);
+				SQLCommand select;
+
+				if (database is MySql.Data.MySqlClient.MySqlConnection)
+					select = GetCommand("select account_id from summoner where summoner_name = :summoner_name and region = :region", database);
+				else
+					select = GetCommand("select account_id from summoner where lower(summoner_name) = lower(:summoner_name) and region = cast(:region as region_type)", database);
+
 				select.Set("summoner_name", summonerName);
 				select.SetEnum("region", regionHandler.GetRegionEnum());
 				using (DbDataReader reader = select.ExecuteReader())

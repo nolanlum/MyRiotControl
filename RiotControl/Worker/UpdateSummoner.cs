@@ -18,8 +18,8 @@ namespace RiotControl
 				SQLCommand update = Command("update summoner_rating set wins = :wins, losses = :losses, leaves = :leaves, current_rating = :current_rating, top_rating = :top_rating where summoner_id = :summoner_id and rating_map = cast(:rating_map as map_type) and game_mode = cast(:game_mode as game_mode_type)");
 				if (forceNullRating)
 				{
-					update.Set("current_rating", NpgsqlDbType.Integer, null);
-					update.Set("top_rating", NpgsqlDbType.Integer, null);
+					update.Set("current_rating", null as int?);
+					update.Set("top_rating", null as int?);
 				}
 				else
 				{

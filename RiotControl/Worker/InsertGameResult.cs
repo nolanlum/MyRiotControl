@@ -143,7 +143,7 @@ namespace RiotControl
 			insert.Set(gameResult.Level);
 
 			//Items require special treatment
-			insert.Set(NpgsqlDbType.Array | NpgsqlDbType.Integer, gameResult.Items);
+			insert.Set(gameResult.Items);
 
 			insert.Set(gameResult.Kills);
 			insert.Set(gameResult.Deaths);

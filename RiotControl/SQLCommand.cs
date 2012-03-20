@@ -4,6 +4,7 @@ using System.Linq;
 using MySql.Data.MySqlClient;
 using Npgsql;
 using NpgsqlTypes;
+using System.Runtime.InteropServices;
 
 namespace RiotControl
 {
@@ -21,13 +22,19 @@ namespace RiotControl
 		{
 			CommandProfiler = profiler;
 			Query = string.Format(query, arguments);
-			Command = DatabaseConnectionProvider.GetCommand(Query, connection);
 
 			// All logic assumes MySQL is the "edge case", and the fallback is postgre.
 			if (connection is MySqlConnection)
+			{
+				Query = Query.Replace(":", "?");
 				SqlType = new SqlTypes(MySqlDbType.Int32, MySqlDbType.Text, MySqlDbType.Double, MySqlDbType.Bit, MySqlDbType.VarChar);
+			}
 			else
+			{
 				SqlType = new SqlTypes(NpgsqlDbType.Integer, NpgsqlDbType.Text, NpgsqlDbType.Double, NpgsqlDbType.Boolean, NpgsqlDbType.Varchar);
+			}
+
+			Command = DatabaseConnectionProvider.GetCommand(Query, connection);
 		}
 
 		public void SetFieldNames(List<string> fields)
@@ -57,12 +64,40 @@ namespace RiotControl
 			Command.Parameters[Command.Parameters.Count - 1].Value = value;
 		}
 
+		void Set(NpgsqlDbType type, object value)
+		{
+			Enumerator.MoveNext();
+			Command.Parameters.Add(new NpgsqlParameter(Enumerator.Current, type));
+			Command.Parameters[Command.Parameters.Count - 1].Value = value;
+		}
+
+		void Set(MySqlDbType type, object value)
+		{
+			Enumerator.MoveNext();
+			Command.Parameters.Add(new MySqlParameter(Enumerator.Current, type));
+			Command.Parameters[Command.Parameters.Count - 1].Value = value;
+		}
+
 		public void Set(string name, int value)
 		{
 			if (SqlType.Integer is MySqlDbType)
 				Set(name, (MySqlDbType) SqlType.Integer, value);
 			else
 				Set(name, (NpgsqlDbType) SqlType.Integer, value);
+		}
+
+		public void Set(string name, int? value)
+		{
+			object argument;
+			if (value.HasValue)
+				argument = value.Value;
+			else
+				argument = null;
+
+			if (SqlType.Integer is MySqlDbType)
+				Set(name, (MySqlDbType) SqlType.Integer, argument);
+			else
+				Set(name, (NpgsqlDbType) SqlType.Integer, argument);
 		}
 
 		public void Set(string name, bool value)
@@ -89,20 +124,6 @@ namespace RiotControl
 				Set(name, (NpgsqlDbType) SqlType.Varchar, value);
 		}
 
-		void Set(NpgsqlDbType type, object value)
-		{
-			Enumerator.MoveNext();
-			Command.Parameters.Add(new NpgsqlParameter(Enumerator.Current, type));
-			Command.Parameters[Command.Parameters.Count - 1].Value = value;
-		}
-
-		void Set(MySqlDbType type, object value)
-		{
-			Enumerator.MoveNext();
-			Command.Parameters.Add(new MySqlParameter(Enumerator.Current, type));
-			Command.Parameters[Command.Parameters.Count - 1].Value = value;
-		}
-
 		public void Set(int value)
 		{
 			if (SqlType.Integer is MySqlDbType)
@@ -123,6 +144,19 @@ namespace RiotControl
 				Set((MySqlDbType) SqlType.Integer, argument);
 			else
 				Set((NpgsqlDbType) SqlType.Integer, argument);
+		}
+
+		public void Set(int[] value)
+		{
+			if (SqlType.Integer is MySqlDbType)
+			{
+				// MySQL doesn't support arrays, so pack the array into a blob.
+				var conv = new IntegerByteArray();
+				conv.intArray = value;
+				Set(MySqlDbType.Blob, conv.byteArray);
+			}
+			else
+				Set(NpgsqlDbType.Array | NpgsqlDbType.Integer, value);
 		}
 
 		public void Set(string value)
@@ -215,6 +249,12 @@ namespace RiotControl
 				Boolean = b;
 				Varchar = v;
 			}
+		}
+
+		[StructLayout(LayoutKind.Explicit)]
+		private struct IntegerByteArray {
+			[FieldOffset(0)] public int[] intArray;
+			[FieldOffset(0)] public byte[] byteArray;
 		}
 	}
 }

@@ -178,7 +178,13 @@ namespace RiotControl
 					{
 						using (DbConnection database = DatabaseProvider.GetConnection())
 						{
-							SQLCommand command = new SQLCommand("select account_id from summoner where region = cast(:region as region_type) and update_automatically = true", database);
+							SQLCommand command;
+
+							if (database is MySql.Data.MySqlClient.MySqlConnection)
+								command = new SQLCommand("select account_id from summoner where region = :region and update_automatically = true", database);
+							else
+								command = new SQLCommand("select account_id from summoner where region = cast(:region as region_type) and update_automatically = true", database);
+
 							command.Set("region", GetRegionEnum());
 							using (DbDataReader reader = command.ExecuteReader())
 							{

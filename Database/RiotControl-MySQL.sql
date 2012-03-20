@@ -1,34 +1,11 @@
-create type region_type as enum
-(
-        'north_america',
-        'europe_west',
-        'europe_nordic_east'
-);
-
-create type map_type as enum
-(
-        'twisted_treeline',
-        'summoners_rift',
-        'dominion'
-);
-
-create type game_mode_type as enum
-(
-        'custom',
-        'normal',
-        'bot',
-        'solo',
-        'premade'
-);
-
 DROP TABLE IF EXISTS summoner CASCADE;
 
 CREATE TABLE summoner (
 	id int AUTO_INCREMENT PRIMARY KEY,
 	
-	region ENUM('north_america', 'europe_west', 'europe_nordic_east') not noll,
+	region ENUM('north_america', 'europe_west', 'europe_nordic_east') not null,
 	
-	-- Cannot be made unique because of the data from multiple regions being stored in the same table
+	-- Cannot be made unique because of the data from multiple regions being stored in the same table.
 	account_id integer not null,
 	summoner_id integer not null,
 
@@ -51,7 +28,7 @@ CREATE TABLE summoner (
 CREATE INDEX summoner_account_id_index ON summoner (region, account_id);
 
 -- For lookups by name (case-insensitive)
-CREATE INDEX summoner_summoner_name_index ON summoner (region, lower(summoner_name));
+CREATE INDEX summoner_summoner_name_index ON summoner (region, summoner_name(50));
 
 -- For the automatic updates
 CREATE INDEX summoner_update_automatically_index ON summoner (update_automatically);
@@ -158,11 +135,11 @@ CREATE TABLE game_result
 (
 	id int AUTO_INCREMENT PRIMARY KEY,
 
-	--Cannot be made unique because of the data from multiple regions being stored in the same table
+	-- Cannot be made unique because of the data from multiple regions being stored in the same table
 	game_id integer not null,
 
-	result_map map_type not null,
-	game_mode game_mode_type not null,
+	result_map ENUM('twisted_treeline', 'summoners_rift', 'dominion') not null,
+	game_mode ENUM('custom', 'normal', 'bot', 'solo', 'premade') not null,
 
 	-- This is when the game was created.
 	game_time timestamp not null,
@@ -188,116 +165,123 @@ DROP TABLE IF EXISTS team_player CASCADE;
 -- This table holds the results for one player in a game retrieved from the recent match history.
 CREATE TABLE team_player
 (
-        game_id integer references game_result(id) not null,
-        team_id integer references team(id) not null,
-        summoner_id integer references summoner(id) not null,
+	game_id integer not null,
+	team_id integer not null,
+	summoner_id integer not null,
 
-        won boolean not null,
+	won boolean not null,
 
-        ping integer not null,
-        time_spent_in_queue integer not null,
+	ping integer not null,
+	time_spent_in_queue integer not null,
 
-        premade_size integer not null,
+	premade_size integer not null,
 
-        --This is an argument used in the Elo formula
-        k_coefficient integer not null,
-        probability_of_winning double precision not null,
+	-- This is an argument used in the Elo formula
+	k_coefficient integer not null,
+	probability_of_winning double precision not null,
 
-        --Elo may be left undefined as it is not available in custom games
-        rating integer,
-        rating_change integer,
-        --I'm still not entirely sure what this one means
-        adjusted_rating integer,
-        team_rating integer,
+	-- Elo may be left undefined as it is not available in custom games
+	rating integer,
+	rating_change integer,
+	-- I'm still not entirely sure what this one means
+	adjusted_rating integer,
+	team_rating integer,
 
-        experience_earned integer not null,
-        boosted_experience_earned integer not null,
+	experience_earned integer not null,
+	boosted_experience_earned integer not null,
 
-        ip_earned integer not null,
-        boosted_ip_earned integer not null,
+	ip_earned integer not null,
+	boosted_ip_earned integer not null,
 
-        summoner_level integer not null,
+	summoner_level integer not null,
 
-        summoner_spell1 integer not null,
-        summoner_spell2 integer not null,
+	summoner_spell1 integer not null,
+	summoner_spell2 integer not null,
 
-        champion_id integer not null,
+	champion_id integer not null,
 
-        --can be NULL, apparently
-        skin_name text,
-        skin_index integer not null,
+	-- can be NULL, apparently
+	skin_name text,
+	skin_index integer not null,
 
-        champion_level integer not null,
+	champion_level integer not null,
 
-        items integer array[6] not null,
+	items blob not null,
 
-        kills integer not null,
-        deaths integer not null,
-        assists integer not null,
+	kills integer not null,
+	deaths integer not null,
+	assists integer not null,
 
-        minion_kills integer not null,
+	minion_kills integer not null,
 
-        gold integer not null,
+	gold integer not null,
 
-        damage_dealt integer not null,
-        physical_damage_dealt integer not null,
-        magical_damage_dealt integer not null,
+	damage_dealt integer not null,
+	physical_damage_dealt integer not null,
+	magical_damage_dealt integer not null,
 
-        damage_taken integer not null,
-        physical_damage_taken integer not null,
-        magical_damage_taken integer not null,
+	damage_taken integer not null,
+	physical_damage_taken integer not null,
+	magical_damage_taken integer not null,
 
-        total_healing_done integer not null,
+	total_healing_done integer not null,
 
-        time_spent_dead integer not null,
+	time_spent_dead integer not null,
 
-        largest_multikill integer not null,
-        largest_killing_spree integer not null,
-        largest_critical_strike integer not null,
+	largest_multikill integer not null,
+	largest_killing_spree integer not null,
+	largest_critical_strike integer not null,
 
-        --Summoner's Rift/Twisted Treeline
+	-- Summoner's Rift/Twisted Treeline
 
-        neutral_minions_killed integer,
+	neutral_minions_killed integer,
 
-        turrets_destroyed integer,
-        inhibitors_destroyed integer,
+	turrets_destroyed integer,
+	inhibitors_destroyed integer,
 
-        --Dominion
+	-- Dominion
 
-        nodes_neutralised integer,
-        node_neutralisation_assists integer,
-        nodes_captured integer,
+	nodes_neutralised integer,
+	node_neutralisation_assists integer,
+	nodes_captured integer,
 
-        victory_points integer,
-        objectives integer,
+	victory_points integer,
+	objectives integer,
 
-        total_score integer,
-        objective_score integer,
-        combat_score integer,
+	total_score integer,
+	objective_score integer,
+	combat_score integer,
 
-        rank integer
+	rank integer,
+	
+	INDEX(game_id),
+	FOREIGN KEY (game_id) REFERENCES game_result(id),
+	INDEX(team_id),
+	FOREIGN KEY (team_id) REFERENCES team(id),
+	INDEX(summoner_id),
+	FOREIGN KEY (summoner_id) REFERENCES summoner(id)
 );
 
-create index team_player_game_id_index on team_player (game_id);
-create index team_player_team_id_index on team_player (team_id);
-create index team_player_summoner_id_index on team_player (summoner_id);
+CREATE INDEX team_player_game_id_index ON team_player (game_id);
+CREATE INDEX team_player_team_id_index ON team_player (team_id);
+CREATE INDEX team_player_summoner_id_index ON team_player (summoner_id);
 
---No explicit indices are provided for the following two tables as they are just loaded once when the application starts
---After that, the application performs the translation itself because it's probably faster and a very common operation
+-- No explicit indices are provided for the following two tables as they are just loaded once when the application starts
+-- After that, the application performs the translation itself because it's probably faster and a very common operation
 
-drop table if exists champion_name cascade;
+DROP TABLE IF EXISTS champion_name CASCADE;
 
-create table champion_name
+CREATE TABLE champion_name
 (
-        champion_id integer unique not null,
-        champion_name text not null
+	champion_id integer not null PRIMARY KEY,
+	champion_name text not null
 );
 
-drop table if exists item_information cascade;
+DROP TABLE IF EXISTS item_information CASCADE;
 
-create table item_information
+CREATE TABLE item_information
 (
-        item_id integer unique not null,
-        item_name text not null,
-        description text not null
+	item_id integer not null PRIMARY KEY,
+	item_name text not null,
+	description text not null
 );
